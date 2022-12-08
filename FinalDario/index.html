@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    
+
+    <script src="./js/d3.v7.min.js"></script>
+    <script src="./js/util.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <h1>The Vaccination Progress Map Around World</h1>
+    
+        <div id="compo-year">
+            <div>Select Year: </div>
+            <select id="select-year"></select>
+        </div>
+
+        <div id="compo-vac">
+            <div>Select Vaccine: </div>
+            <select id="select-vac"></select>
+        </div>
+
+        <div id="compo-month">
+            <div>Select Month: </div>
+            <input id="select-month" type="range" min="1" max="13" value="1"/>
+            <label id="show-month" for="select-month">1</label>
+        </div>
+     
+   
+    <div class="map">
+    <svg id="svg-container"></svg>
+
+    <script>
+        config = {
+            svgWidth: 1200,
+            svgHeight: 900,
+            figLeftMargin: 50,
+            figTopMargin: 50,
+            earthWidth: 1100,
+            earthHeight: 800
+        };
+
+        svgContainer = d3.select("#svg-container")
+            .attr("width", config.svgWidth)
+            .attr("height", config.svgHeight);
+        
+        // 
+        let selectVacs = d3.select("#select-vac");
+        let selectYear = d3.select("#select-year");
+        let selectMonth = d3.select("#select-month");
+
+        let maxYear;
+        let showMonth = d3.select("#show-month");
+        let showYear = d3.select("#show-year");
+
+        ////////////////
+        let allYearData; // 所有年份的数据
+        let locationToSum; // 某年某月下各地区-疫苗接种总数
+
+        let countryFigSels;
+
+        let vacTypeToColor = d3.scaleOrdinal()
+            .range(d3.schemeSet3);
+
+        function updateContryFig(){
+            let vacType = selectVacs.node().value;
+
+            let vacColor = vacTypeToColor(vacType)
+
+            let numberToColor =  makeNumberToColor(locationToSum, vacColor);
+
+            countryFigSels
+            .attr("fill", d => numberToColor(locationToSum[d._fig_location]))
+        }
+
+        function updateSelectedData()
+        {
+            const yearValue = selectYear.node().value;
+            const vacValue = selectVacs.node().value;
+            const monthValue = selectMonth.node().value;
+
+            showMonth.text(monthValue);
+            showYear.text(yearValue);
+
+            let filterYear;
+            if(yearValue === 'Years'){
+                filterYear = (e)=>true;
+            } // 所有年份 == Years
+            else
+            {
+                filterYear = e => e['date'].slice(0, 4) === yearValue;
+            }
+
+            let filterMonth;
+            if(+monthValue === 13){
+                filterMonth = (e)=>true;
+                showMonth.text("AllYears") 
+            } // 全年 == AllYears
+            else
+            {
+                filterMonth = row => +row['date'].slice(5, 7) === +monthValue;
+            }
+
+            let filterVacType;
+            if(vacValue === 'AllVac'){
+                filterVacType = (e) => true
+            } // 所有疫苗 == AllVac
+            else
+            {
+                filterVacType = row => row["vaccine"] === vacValue;
+            }
+
+            let selectedData = allYearData.filter(row => 
+                filterYear(row) && filterMonth(row) && filterVacType(row)
+            );
+
+            locationToSum = calcLocationToData(selectedData);
+        }
+
+        [selectYear, selectVacs, selectMonth]
+        .forEach(e=>e.on("change", ()=>{
+            updateSelectedData();
+            updateContryFig();
+        }))
+        
+        d3.json("./data/data_set.json")
+        .then(data => {
+            allYearData = data;
+
+            let vacType = new Set(['AllVac', ...data.map(e => e["vaccine"])]); //所有疫苗 = AllVac
+            appendOptionToSelect(selectVacs, vacType);
+            vacTypeToColor.domain(vacType);
+
+            let allYears = new Set(data.map(e => +e["date"].slice(0, 4)));
+            allYears.add("Years") // 所有年份 == Years
+            appendOptionToSelect(selectYear, allYears)
+
+            d3.json("./data/GeoChart.world.geo.json")
+                .then(mapData => {
+                    const projection = d3.geoOrthographic()
+                        .fitExtent([[0, 0], [config.earthWidth, config.earthHeight]], mapData)
+                        .rotate([0, 0, 0])
+                        .scale(300)
+
+                    const geoGenerator = d3.geoPath()
+                        .projection(projection);
+
+                    svgContainer.append("g")
+                        .attr('transform', `translate(${config.figLeftMargin}, ${config.figTopMargin})`)
+
+                    countryFigSels = svgContainer
+                        .append("g")
+                        .attr('transform', `translate(${config.figLeftMargin}, ${config.figTopMargin})`)
+                        .selectAll("NONE")
+                        .data(mapData.features)
+                        .enter()
+                        .append("path")
+                        .each(d => {
+                            d['_fig_location'] = d['properties']['sovereignt'];
+                            d['_fig_center'] = [d['properties']['label_x'], d['properties']['label_y']];
+                        })
+                        .attr("d", p => geoGenerator(p));
+
+                    countryFigSels
+                    .call(makeHover(location => locationToSum[location]));
+
+                    svgContainer
+                    .call(makeRotate(projection, geoGenerator, countryFigSels));
+
+                    updateSelectedData()
+                    updateContryFig()
+                })
+
+            })
+    </script>
+    </div>
+
+</body>
+
+</html>
