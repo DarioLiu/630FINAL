@@ -9,36 +9,57 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <h1>The Vaccination Progress Map Around World</h1>
-    
-        <div id="compo-year">
-            <div>Select Year: </div>
-            <select id="select-year"></select>
+    <div class="heading">
+        <h1>The Vaccination Progress Map Around World</h1>
+    </div>
+    <body>
+        <div id="presentation">
+            <div id="mapbox">
+                <div id="compo" > 
+                    <div id="compo-year">
+                        <div id="label">Select Year: </div>
+                        <select id="select-year"></select>
+                    </div>
+            
+                    <div id="compo-vac">
+                        <div id="label">Select Vaccine: </div>
+                        <select id="select-vac"></select>
+                    </div>
+            
+                    <div id="compo-month">
+                        <div id="label"> Select Month: </div>
+                        <input id="select-month" type="range" min="1" max="13" value="1"/>
+                        <output id="show-month" for="select-month">1</output>
+                    </div>
+                </div>
+            
+                <div id="colorscale">
+                    <span></span>
+                    <span id="color1">Test</span>
+                    <span id="color2">Test2</span>
+                    <span id="color3">Color 3</span>
+                    <span id="color4">Test4</span>
+                    <span></span>
+                </div>
+            
+                <svg id="svg-container">      
+            
+                </svg>
+            </div>
+            <div id="description">
+                <h2>The Fact about Covid Vaccine Progress</h2>
+            </div>
         </div>
-
-        <div id="compo-vac">
-            <div>Select Vaccine: </div>
-            <select id="select-vac"></select>
-        </div>
-
-        <div id="compo-month">
-            <div>Select Month: </div>
-            <input id="select-month" type="range" min="1" max="13" value="1"/>
-            <label id="show-month" for="select-month">1</label>
-        </div>
-     
-   
-    <div class="map">
-    <svg id="svg-container"></svg>
 
     <script>
         config = {
-            svgWidth: 1200,
-            svgHeight: 900,
-            figLeftMargin: 50,
-            figTopMargin: 50,
-            earthWidth: 1100,
-            earthHeight: 800
+            svgWidth: 648,
+            svgHeight: 680,
+            figLeftMargin: 0,
+            
+            figTopMargin: 20,
+            earthWidth: 650,
+            earthHeight: 650,
         };
 
         svgContainer = d3.select("#svg-container")
@@ -62,17 +83,31 @@
 
         let vacTypeToColor = d3.scaleOrdinal()
             .range(d3.schemeSet3);
-
+      
         function updateContryFig(){
             let vacType = selectVacs.node().value;
 
             let vacColor = vacTypeToColor(vacType)
-
+            
             let numberToColor =  makeNumberToColor(locationToSum, vacColor);
+            
+            countryFigSels /// For loop color change based on the number change
+            .attr("fill", d => {
+                console.log(numberToColor(locationToSum[d._fig_location]))
+                return numberToColor(locationToSum[d._fig_location])})
+            let colorRange = [];
+            let color = d3.color(vacColor);
+            
+            
+               
 
-            countryFigSels
-            .attr("fill", d => numberToColor(locationToSum[d._fig_location]))
+                document.getElementById("color1").style.backgroundColor = color;
+                document.getElementById("color2").style.backgroundColor = color.darker(1);
+                document.getElementById("color3").style.backgroundColor= color.darker(2);
+                document.getElementById("color4").style.backgroundColor= color.darker(3);
+        
         }
+
 
         function updateSelectedData()
         {
@@ -174,7 +209,7 @@
 
             })
     </script>
-    </div>
+   
 
 </body>
 
